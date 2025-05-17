@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Bin Monitoring Dashboard</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+  <style>
+    .chart-container {
+      position: relative;
+      height: 300px;
+      width: 100%;
+    }
+    .metric-card {
+      transition: all 0.3s ease;
+    }
+    .metric-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+    .bin-card {
+      transition: transform 0.2s ease;
+    }
+    .bin-card:hover {
+      transform: scale(1.02);
+    }
+    .fill-indicator {
+      transition: height 1s ease-out;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <div class="container mx-auto px-4 py-8">
+    <header class="mb-10">
+      <h1 class="text-3xl font-bold text-gray-800 mb-2">Smart Bin Monitoring Dashboard</h1>
+      <p class="text-gray-600">Real-time visualization of smart waste bin data with edge vs cloud processing comparison</p>
+      <div id="connection-status" class="mt-2 text-sm font-medium">
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-800">
+          <span id="status-indicator" class="h-2 w-2 rounded-full bg-yellow-500 mr-2"></span>
+          <span id="status-text">Connecting...</span>
+        </span>
+      </div>
+    </header>
+
+    <!-- Processing Comparison Section -->
+    <section class="mb-10">
+      <h2 class="text-2xl font-bold text-gray-800 mb-4">Edge vs Cloud Processing</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- Response Time -->
+        <div class="metric-card bg-white rounded-lg shadow p-6">
+          <h3 class="text-lg font-semibold text-gray-700 mb-2">Response Time</h3>
+          <div class="flex items-end justify-between">
+            <div>
+              <p class="text-3xl font-bold text-indigo-600" id="response-time-improvement">-</p>
+              <p class="text-sm text-gray-500">faster with edge processing</p>
+            </div>
+            <div class="text-right">
+              <p class="text-sm text-gray-500">Edge: <span id="edge-response-time" class="font-medium">-</span> ms</p>
+              <p class="text-sm text-gray-500">Cloud: <span id="cloud-response-time" class="font-medium">-</span> ms</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Energy Usage -->
+        <div class="metric-card bg-white rounded-lg shadow p-6">
+          <h3 class="text-lg font-semibold text-gray-700 mb-2">Energy Usage</h3>
+          <div class="flex items-end justify-between">
+            <div>
+              <p class="text-3xl font-bold text-green-600" id="energy-savings">-</p>
+              <p class="text-sm text-gray-500">energy savings</p>
+            </div>
+            <div class="text-right">
+              <p class="text-sm text-gray-500">Edge: <span id="edge-energy" class="font-medium">-</span> kWh</p>
+              <p class="text-sm text-gray-500">Cloud: <span id="cloud-energy" class="font-medium">-</span> kWh</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- CO2 Emissions -->
+        <div class="metric-card bg-white rounded-lg shadow p-6">
+          <h3 class="text-lg font-semibold text-gray-700 mb-2">CO₂ Emissions</h3>
+          <div class="flex items-end justify-between">
+            <div>
+              <p class="text-3xl font-bold text-green-600" id="co2-reduction">-</p>
+              <p class="text-sm text-gray-500">CO₂ reduction</p>
+            </div>
+            <div class="text-right">
+              <p class="text-sm text-gray-500">Edge: <span id="edge-co2" class="font-medium">-</span> kg</p>
+              <p class="text-sm text-gray-500">Cloud: <span id="cloud-co2" class="font-medium">-</span> kg</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cost -->
+        <div class="metric-card bg-white rounded-lg shadow p-6">
+          <h3 class="text-lg font-semibold text-gray-700 mb-2">Operational Cost</h3>
+          <div class="flex items-end justify-between">
+            <div>
+              <p class="text-3xl font-bold text-green-600" id="cost-savings">-</p>
+              <p class="text-sm text-gray-500">cost savings</p>
+            </div>
+            <div class="text-right">
+              <p class="text-sm text-gray-500">Edge: $<span id="edge-cost" class="font-medium">-</span></p>
+              <p class="text-sm text-gray-500">Cloud: $<span id="cloud-cost" class="font-medium">-</span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Charts Section -->
+    <section class="mb-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Response Time Chart -->
+      <div class="bg-white rounded-lg shadow p-6">
+        <h3 class="text-lg font-semibold text-gray-700 mb-4">Response Time Comparison</h3>
+        <div class="chart-container">
+          <canvas id="responseTimeChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Energy Usage Chart -->
+      <div class="bg-white rounded-lg shadow p-6">
+        <h3 class="text-lg font-semibold text-gray-700 mb-4">Energy & CO₂ Comparison</h3>
+        <div class="chart-container">
+          <canvas id="energyChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Real-time Bin Status -->
+    <section class="mb-10">
+      <h2 class="text-2xl font-bold text-gray-800 mb-4">Bin Status</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6" id="bins-container">
+        <!-- Bin cards will be generated here -->
+      </div>
+    </section>
+
+    <!-- Data Table -->
+    <section class="mb-10">
+      <h2 class="text-2xl font-bold text-gray-800 mb-4">Latest Processing Metrics</h2>
+      <div class="overflow-x-auto bg-white rounded-lg shadow">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Processing Path</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Response Time</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Processing Time</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Energy Usage</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CO₂ Emissions</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data Size</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200" id="metrics-table-body">
+            <!-- Data will be inserted here -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Conclusions -->
+    <section class="mb-10">
+      <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Analysis</h2>
+        <div id="conclusion-container">
+          <p class="text-gray-600 mb-4">Waiting for sufficient data...</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // WebSocket connection
+    let socket;
+    let responseTimeChart;
+    let energyChart;
+    let responseTimeData = {
+      edge: [],
+      cloud: []
+    };
+    let energyData = {
+      edgeEnergy: [],
+      cloudEnergy: [],
+      edgeCO2: [],
+      cloudCO2: []
+    };
+    const maxDataPoints = 20;
+    let latestComparison = null;
+
+    // Charts configuration
+    function setupCharts() {
+      // Response Time Chart
+      const responseTimeCtx = document.getElementById('responseTimeChart').getContext('2d');
+      responseTimeChart = new Chart(responseTimeCtx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: 'Edge Processing',
+              data: [],
+              borderColor: 'rgba(99, 102, 241, 1)',
+              backgroundColor: 'rgba(99, 102, 241, 0.1)',
+              tension: 0.4,
+              fill: true
+            },
+            {
+              label: 'Cloud Processing',
+              data: [],
+              borderColor: 'rgba(251, 113, 133, 1)',
+              backgroundColor: 'rgba(251, 113, 133, 0.1)',
+              tension: 0.4,
+              fill: true
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
+          plugins: {
+            legend: {
+              position: 'top',
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return context.dataset.label + ': ' + context.raw + ' ms';
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              title: {
+                display: true,
+                text: 'Response Time (ms)'
+              },
+              beginAtZero: true
+            },
+            x: {
+              title: {
+                display: true,
+                text: 'Time'
+              }
+            }
+          }
+        }
+      });
+
+      // Energy Chart
+      const energyCtx = document.getElementById('energyChart').getContext('2d');
+      energyChart = new Chart(energyCtx, {
+        type: 'bar',
+        data: {
+          labels: ['Energy (kWh)', 'CO₂ (kg)'],
+          datasets: [
+            {
+              label: 'Edge Processing',
+              data: [0, 0],
+              backgroundColor: 'rgba(52, 211, 153, 0.6)',
+              borderColor: 'rgba(52, 211, 153, 1)',
+              borderWidth: 1
+            },
+            {
+              label: 'Cloud Processing',
+              data: [0, 0],
+              backgroundColor: 'rgba(251, 113, 133, 0.6)',
+              borderColor: 'rgba(251, 113, 133, 1)',
+              borderWidth: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Value'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Connect to WebSocket server
+    function connectWebSocket() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}`;
+      
+      socket = new WebSocket(wsUrl);
+      
+      socket.onopen = function() {
+        document.getElementById('status-indicator').className = 'h-2 w-2 rounded-full bg-green-500 mr-2';
+        document.getElementById('status-text').textContent = 'Connected';
+        console.log('Connected to WebSocket server');
+      };
+      
+      socket.onclose = function() {
+        document.getElementById('status-indicator').className = 'h-2 w-2 rounded-full bg-red-500 mr-2';
+        document.getElementById('status-text').textContent = 'Disconnected';
+        console.log('Disconnected from WebSocket server. Reconnecting in 3 seconds...');
+        setTimeout(connectWebSocket, 3000);
+      };
+      
+      socket.onerror = function(error) {
+        console.error('WebSocket error:', error);
+      };
+      
+      socket.onmessage = function(event) {
+        try {
+          const data = JSON.parse(event.data);
+          processData(data);
+        } catch (error) {
+          console.error('Error processing message:', error);
+        }
+      };
+    }
+
+    // Process incoming data
+    function processData(data) {
+      // Update bin data
+      if (data.bins && data.bins.length > 0) {
+        updateBins(data.bins);
+      }
+      
+      // Update metrics if available
+      if (data.metrics && data.metrics.path) {
+        updateMetricsTable(data.metrics);
+        updateCharts(data.metrics);
+      }
+      
+      // Update comparison metrics
+      if (data.metrics && data.sustainabilityImpact) {
+        latestComparison = data;
+        updateComparisonCards(data);
+        updateConclusion(data);
+      }
+    }
+
+    // Update bin visualization
+    function updateBins(bins) {
+      const container = document.getElementById('bins-container');
+      container.innerHTML = ''; // Clear existing bins
+      
+      bins.forEach(bin => {
+        const fillLevel = bin.sensors.fill_level.value;
+        const gasLevel = bin.sensors.gas.value;
+        const temperature = bin.sensors.temperature.value;
+        
+        // Determine status color
+        let statusColor = 'bg-green-500';
+        let statusText = 'OK';
+        
+        if (bin.status === 'NEEDS_EMPTYING') {
+          statusColor = 'bg-red-500';
+          statusText = 'NEEDS EMPTYING';
+        } else if (bin.status === 'WARNING') {
+          statusColor = 'bg-yellow-500';
+          statusText = 'WARNING';
+        }
+        
+        const binCard = document.createElement('div');
+        binCard.className = 'bin-card bg-white rounded-lg shadow overflow-hidden';
+        binCard.innerHTML = `
+          <div class="relative h-48 bg-gray-100">
+            <div class="absolute bottom-0 left-0 right-0 bg-gray-200" style="height: 100%;">
+              <div class="absolute bottom-0 left-0 right-0 bg-blue-400 fill-indicator" style="height: ${fillLevel}%;"></div>
+            </div>
+            <div class="absolute top-0 left-0 right-0 p-3 flex justify-between items-start">
+              <span class="font-semibold text-gray-700">${bin.binId}</span>
+              <span class="px-2 py-1 rounded text-xs font-bold text-white ${statusColor}">${statusText}</span>
+            </div>
+            <div class="absolute bottom-0 left-0 right-0 p-3 text-white font-bold text-xl text-shadow">
+              ${fillLevel}%
+            </div>
+          </div>
+          <div class="p-4">
+            <div class="text-sm text-gray-600 mb-2">Location: ${bin.location}</div>
+            <div class="grid grid-cols-3 gap-2 text-xs">
+              <div class="flex flex-col">
+                <span class="text-gray-500">Temp</span>
+                <span class="font-medium">${temperature}°C</span>
+              </div>
+              <div class="flex flex-col">
+                <span class="text-gray-500">Gas</span>
+                <span class="font-medium">${gasLevel} ppm</span>
+              </div>
+              <div class="flex flex-col">
+                <span class="text-gray-500">Weight</span>
+                <span class="font-medium">${bin.sensors.weight.value} kg</span>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        container.appendChild(binCard);
+      });
+    }
+
+    // Update metrics table
+    function updateMetricsTable(metrics) {
+      const tableBody = document.getElementById('metrics-table-body');
+      const newRow = document.createElement('tr');
+      
+      // Format path name for display
+      const pathName = metrics.path === 'edge' ? 'Edge Processing' : 'Cloud Processing';
+      
+      newRow.innerHTML = `
+        <td class="px-6 py-4 whitespace-nowrap">
+          <div class="flex items-center">
+            <div class="ml-4">
+              <div class="text-sm font-medium text-gray-900">${pathName}</div>
+            </div>
+          </div>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap">
+          <div class="text-sm text-gray-900">${metrics.responseTime.toFixed(2)} ms</div>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap">
+          <div class="text-sm text-gray-900">${metrics.processingTime.toFixed(2)} ms</div>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap">
+          <div class="text-sm text-gray-900">${metrics.energyUsage.toFixed(4)} kWh</div>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap">
+          <div class="text-sm text-gray-900">${metrics.co2.toFixed(4)} kg</div>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap">
+          <div class="text-sm text-gray-900">${(metrics.dataSize / 1024).toFixed(2)} KB</div>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap">
+          <div class="text-sm text-gray-900">$${metrics.cost.toExponential(3)}</div>
+        </td>
+      `;
+      
+      // Keep only the latest 10 rows
+      while (tableBody.childNodes.length >= 10) {
+        tableBody.removeChild(tableBody.firstChild);
+      }
+      
+      tableBody.appendChild(newRow);
+    }
+
+    // Update charts with new data
+    function updateCharts(metrics) {
+      const now = new Date().toLocaleTimeString();
+      
+      // Update response time data
+      if (metrics.path === 'edge') {
+        responseTimeData.edge.push({
+          x: now,
+          y: metrics.responseTime
+        });
+        
+        // Keep only the last N data points
+        if (responseTimeData.edge.length > maxDataPoints) {
+          responseTimeData.edge.shift();
+        }
+        
+        // Update energy data
+        energyData.edgeEnergy = metrics.energyUsage;
+        energyData.edgeCO2 = metrics.co2;
+        
+      } else if (metrics.path === 'cloud') {
+        responseTimeData.cloud.push({
+          x: now,
+          y: metrics.responseTime
+        });
+        
+        // Keep only the last N data points
+        if (responseTimeData.cloud.length > maxDataPoints) {
+          responseTimeData.cloud.shift();
+        }
+        
+        // Update energy data
+        energyData.cloudEnergy = metrics.energyUsage;
+        energyData.cloudCO2 = metrics.co2;
+      }
+      
+      // Update response time chart
+      responseTimeChart.data.labels = responseTimeData.edge.map(point => point.x);
+      responseTimeChart.data.datasets[0].data = responseTimeData.edge.map(point => point.y);
+      responseTimeChart.data.datasets[1].data = responseTimeData.cloud.map(point => point.y);
+      responseTimeChart.update();
+      
+      // Update energy chart
+      energyChart.data.datasets[0].data = [energyData.edgeEnergy, energyData.edgeCO2];
+      energyChart.data.datasets[1].data = [energyData.cloudEnergy, energyData.cloudCO2];
+      energyChart.update();
+    }
+
+    // Update comparison cards
+    function updateComparisonCards(data) {
+      if (!data.metrics) return;
+      
+      const metrics = data.metrics;
+      
+      // Update response time card
+      document.getElementById('response-time-improvement').textContent = metrics.responseTime.improvement + '%';
+      document.getElementById('edge-response-time').textContent = metrics.responseTime.edge;
+      document.getElementById('cloud-response-time').textContent = metrics.responseTime.cloud;
+      
+      // Update energy card
+      document.getElementById('energy-savings').textContent = metrics.energy.savings + '%';
+      document.getElementById('edge-energy').textContent = metrics.energy.edge;
+      document.getElementById('cloud-energy').textContent = metrics.energy.cloud;
+      
+      // Update CO2 card
+      document.getElementById('co2-reduction').textContent = metrics.co2.reduction + '%';
+      document.getElementById('edge-co2').textContent = metrics.co2.edge;
+      document.getElementById('cloud-co2').textContent = metrics.co2.cloud;
+      
+      // Update cost card
+      document.getElementById('cost-savings').textContent = metrics.cost.savings + '%';
+      document.getElementById('edge-cost').textContent = metrics.cost.edge;
+      document.getElementById('cloud-cost').textContent = metrics.cost.cloud;
+    }
+
+    // Update conclusion section
+    function updateConclusion(data) {
+      const container = document.getElementById('conclusion-container');
+      
+      container.innerHTML = `
+        <div class="space-y-4">
+          <h3 class="text-xl font-semibold text-gray-800">Key Findings</h3>
+          <p class="text-gray-700">${data.hypothesis}</p>
+          
+          <div class="bg-gray-50 p-4 rounded-lg">
+            <h4 class="font-medium text-gray-800 mb-2">Sustainability Impact</h4>
+            <ul class="space-y-2 text-gray-700">
+              <li class="flex items-start">
+                <span class="h-5 w-5 rounded-full bg-green-100 text-green-500 flex items-center justify-center mr-2">✓</span>
+                ${data.sustainabilityImpact.responseTimeImprovement}
+              </li>
+              <li class="flex items-start">
+                <span class="h-5 w-5 rounded-full bg-green-100 text-green-500 flex items-center justify-center mr-2">✓</span>
+                ${data.sustainabilityImpact.energySavings}
+              </li>
+              <li class="flex items-start">
+                <span class="h-5 w-5 rounded-full bg-green-100 text-green-500 flex items-center justify-center mr-2">✓</span>
+                ${data.sustainabilityImpact.co2Reduction}
+              </li>
+              <li class="flex items-start">
+                <span class="h-5 w-5 rounded-full bg-green-100 text-green-500 flex items-center justify-center mr-2">✓</span>
+                ${data.sustainabilityImpact.costSavings}
+              </li>
+            </ul>
+          </div>
+          
+          <div class="mt-4">
+            <h4 class="font-medium text-gray-800 mb-1">Conclusion</h4>
+            <p class="text-gray-700">${data.conclusion}</p>
+          </div>
+          
+          <div class="bg-blue-50 p-4 rounded-lg mt-4">
+            <h4 class="font-medium text-blue-800 mb-2">Total samples collected</h4>
+            <p class="text-blue-700">${data.metrics.totalSamples} data points analyzed</p>
+          </div>
+        </div>
+      `;
+    }
+
+    // Initialize the application
+    function initialize() {
+      setupCharts();
+      connectWebSocket();
+      
+      // Add a clock update
+      setInterval(() => {
+        const now = new Date();
+        document.getElementById('current-time').textContent = now.toLocaleTimeString();
+      }, 1000);
+    }
+
+    // Start the application when the DOM is loaded
+    document.addEventListener('DOMContentLoaded', initialize);
+  </script>
+</body>
+</html>
