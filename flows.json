@@ -142,7 +142,7 @@
         "type": "debug",
         "z": "8c61a2a284d5b095",
         "name": "Process Output",
-        "active": true,
+        "active": false,
         "tosidebar": true,
         "console": false,
         "tostatus": false,
@@ -161,14 +161,17 @@
         "name": "Update Comparison Metrics",
         "func": "// Get stored metrics\nlet edgeMetrics = flow.get(\"edgeMetrics\") || {\n    count: 0,\n    totalResponseTime: 0,\n    totalEnergy: 0,\n    totalCO2: 0,\n    totalCost: 0,\n    totalDataSent: 0\n};\n\nlet cloudMetrics = flow.get(\"cloudMetrics\") || {\n    count: 0,\n    totalResponseTime: 0,\n    totalEnergy: 0,\n    totalCO2: 0,\n    totalCost: 0\n};\n\n// Skip if we don't have data for both yet\nif (edgeMetrics.count === 0 || cloudMetrics.count === 0) {\n    return null;\n}\n\n// Calculate averages\nconst comparison = {\n    responseTime: {\n        edge: edgeMetrics.totalResponseTime / edgeMetrics.count,\n        cloud: cloudMetrics.totalResponseTime / cloudMetrics.count,\n        improvement: ((cloudMetrics.totalResponseTime / cloudMetrics.count) / \n                    (edgeMetrics.totalResponseTime / edgeMetrics.count) - 1) * 100\n    },\n    energy: {\n        edge: edgeMetrics.totalEnergy / edgeMetrics.count,\n        cloud: cloudMetrics.totalEnergy / cloudMetrics.count,\n        savings: ((cloudMetrics.totalEnergy - edgeMetrics.totalEnergy) / \n                 cloudMetrics.totalEnergy) * 100\n    },\n    co2: {\n        edge: edgeMetrics.totalCO2 / edgeMetrics.count,\n        cloud: cloudMetrics.totalCO2 / cloudMetrics.count,\n        reduction: ((cloudMetrics.totalCO2 - edgeMetrics.totalCO2) / \n                   cloudMetrics.totalCO2) * 100\n    },\n    cost: {\n        edge: edgeMetrics.totalCost / edgeMetrics.count,\n        cloud: cloudMetrics.totalCost / cloudMetrics.count,\n        savings: ((cloudMetrics.totalCost - edgeMetrics.totalCost) / \n                 cloudMetrics.totalCost) * 100\n    },\n    totalSamples: Math.min(edgeMetrics.count, cloudMetrics.count)\n};\n\n// Only show significant figures\nconst formatNumber = (num) => {\n    if (typeof num !== 'number') return 'N/A';\n    if (Math.abs(num) < 0.01) return num.toExponential(2);\n    return Math.round(num * 100) / 100;\n};\n\nfor (const category in comparison) {\n    if (typeof comparison[category] === 'object') {\n        for (const key in comparison[category]) {\n            if (typeof comparison[category][key] === 'number') {\n                comparison[category][key] = formatNumber(comparison[category][key]);\n            }\n        }\n    }\n}\n\n// Store the comparison\nflow.set(\"comparisonMetrics\", comparison);\n\n// Create a message with the comparison\nmsg.payload = {\n    timestamp: new Date().toISOString(),\n    title: \"Edge vs Cloud Processing Comparison\",\n    metrics: comparison,\n    sustainabilityImpact: {\n        co2Reduction: comparison.co2.reduction + \"% CO2 reduction with edge processing\",\n        energySavings: comparison.energy.savings + \"% energy savings with edge processing\",\n        costSavings: comparison.cost.savings + \"% cost savings with edge processing\",\n        responseTimeImprovement: comparison.responseTime.improvement + \"% faster response with edge processing\"\n    },\n    hypothesis: \"Edge processing reduces delays, operational costs, and improves sustainability compared to cloud-only processing in waste management systems.\",\n    conclusion: comparison.responseTime.improvement > 0 && \n               comparison.cost.savings > 0 && \n               comparison.co2.reduction > 0 ? \n               \"The data supports the hypothesis.\" : \n               \"The hypothesis is not fully supported by the current data.\"\n};\n\nreturn msg;",
         "outputs": 1,
+        "timeout": "",
         "noerr": 0,
         "initialize": "",
         "finalize": "",
+        "libs": [],
         "x": 1050,
         "y": 200,
         "wires": [
             [
-                "f110328f2170b30b"
+                "f110328f2170b30b",
+                "94a97052d87807c8"
             ]
         ]
     },
@@ -177,7 +180,7 @@
         "type": "debug",
         "z": "8c61a2a284d5b095",
         "name": "Comparison Results",
-        "active": true,
+        "active": false,
         "tosidebar": true,
         "console": false,
         "tostatus": false,
@@ -185,7 +188,7 @@
         "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
-        "x": 1320,
+        "x": 1380,
         "y": 200,
         "wires": []
     },
@@ -236,6 +239,17 @@
         ]
     },
     {
+        "id": "94a97052d87807c8",
+        "type": "websocket out",
+        "z": "8c61a2a284d5b095",
+        "name": "",
+        "server": "2edd959c62d7a2d2",
+        "client": "",
+        "x": 1440,
+        "y": 40,
+        "wires": []
+    },
+    {
         "id": "1d91ac8baa039d98",
         "type": "ui_group",
         "name": "Simulation Controls",
@@ -245,6 +259,12 @@
         "width": "6",
         "collapse": false,
         "className": ""
+    },
+    {
+        "id": "2edd959c62d7a2d2",
+        "type": "websocket-listener",
+        "path": "/smart-bins",
+        "wholemsg": "false"
     },
     {
         "id": "241c2e838d16e1b2",
