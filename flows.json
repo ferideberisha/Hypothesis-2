@@ -1,15 +1,15 @@
 [
     {
-        "id": "8c61a2a284d5b095",
+        "id": "91ce89a582fe7d02",
         "type": "tab",
         "label": "Smart Bin Sensor Simulation",
         "disabled": false,
         "info": "This flow simulates a smart waste bin network with both edge and cloud processing paths to demonstrate efficiency differences."
     },
     {
-        "id": "a3b5f0817e864e04",
+        "id": "7e90f1041ebaeb03",
         "type": "inject",
-        "z": "8c61a2a284d5b095",
+        "z": "91ce89a582fe7d02",
         "name": "Start Simulation",
         "props": [
             {
@@ -31,37 +31,37 @@
         "y": 80,
         "wires": [
             [
-                "49ad88c8838f7e57"
+                "beb24165100acc35"
             ]
         ]
     },
     {
-        "id": "49ad88c8838f7e57",
+        "id": "beb24165100acc35",
         "type": "function",
-        "z": "8c61a2a284d5b095",
+        "z": "91ce89a582fe7d02",
         "name": "Generate Bin Sensor Data",
-        "func": "// Configuration for multiple bins\nconst numBins = 5;\nconst bins = [];\n\n// Create data for multiple bins\nfor (let i = 1; i <= numBins; i++) {\n    // Get persistent bin state from flow context or initialize\n    let binState = flow.get(`bin_${i}`) || {\n        fillLevel: Math.floor(Math.random()*30), // Start with lower fill levels\n        fillRate: Math.random() * 3 + 1, // Different fill rates for different bins\n        temperature: Math.floor(Math.random() * 15) + 10, // 10-25°C\n        gasLevel: Math.floor(Math.random() * 200) + 100, // Initial gas levels\n        weight: Math.floor(Math.random() * 5) + 1, // Initial weight\n        humidity: Math.floor(Math.random() * 30) + 40, // Initial humidity\n        lastEmptied: Date.now() - (Math.random() * 86400000 * 7) // Random last emptied time\n    };\n    \n    // Realistically update bin state\n    binState.fillLevel += binState.fillRate * (Math.random() * 0.5 + 0.75); // Fill level increases over time\n    if (binState.fillLevel > 100) binState.fillLevel = 100; // Cap at 100%\n    \n    // Temperature varies slightly\n    binState.temperature += (Math.random() * 2 - 1);\n    \n    // Gas increases with fill level\n    const fillRatio = binState.fillLevel / 100;\n    binState.gasLevel = 100 + Math.floor(fillRatio * 400 + (Math.random() * 100 - 50));\n    \n    // Weight increases with fill level\n    binState.weight = 1 + Math.floor(fillRatio * 19 + (Math.random() * 3 - 1.5));\n    \n    // Humidity changes based on temperature and fill level\n    binState.humidity += (Math.random() * 4 - 2) + (fillRatio * 2);\n    binState.humidity = Math.max(20, Math.min(95, binState.humidity)); // Constrain\n    \n    // Save updated state\n    flow.set(`bin_${i}`, binState);\n    \n    // Create bin data object\n    bins.push({\n        binId: `bin_${i}`,\n        location: `Zone ${Math.ceil(i/2)}`,\n        timestamp: new Date().toISOString(),\n        sensors: {\n            fill_level: {\n                value: Math.round(binState.fillLevel),\n                unit: \"%\"\n            },\n            gas: {\n                value: Math.round(binState.gasLevel),\n                unit: \"ppm\"\n            },\n            temperature: {\n                value: Math.round(binState.temperature * 10) / 10, // One decimal place\n                unit: \"°C\"\n            },\n            humidity: {\n                value: Math.round(binState.humidity),\n                unit: \"%\"\n            },\n            weight: {\n                value: Math.round(binState.weight * 10) / 10, // One decimal place\n                unit: \"kg\"\n            }\n        },\n        lastEmptied: new Date(binState.lastEmptied).toISOString()\n    });\n}\n\n// Set up message with complete data\nmsg.payload = {\n    bins: bins,\n    totalBins: numBins,\n    timestamp: new Date().toISOString()\n};\n\n// Store metrics for this batch\nmsg.startTime = Date.now(); // For response time calculation\nmsg.dataSize = JSON.stringify(msg.payload).length; // Data size in bytes\n\nreturn msg;",
+        "func": "// Number of bins to simulate\nconst numBins = 5;\nconst bins = [];\n\n// Loop over each bin to update state and generate sensor data\nfor (let i = 1; i <= numBins; i++) {\n    // Retrieve bin state from flow context or initialize fresh state\n    let binState = flow.get(`bin_${i}`) || {\n        fillLevel: Math.floor(Math.random() * 30), // initial fill level 0-30%\n        fillRate: Math.random() * 3 + 1,           // fill rate 1-4% per cycle\n        temperature: Math.floor(Math.random() * 15) + 10, // 10-25 °C\n        gasLevel: Math.floor(Math.random() * 200) + 100, // 100-300 ppm\n        weight: Math.floor(Math.random() * 5) + 1,        // 1-5 kg\n        humidity: Math.floor(Math.random() * 30) + 40,    // 40-70%\n        lastEmptied: Date.now() - (Math.random() * 86400000 * 7), // random last emptied in last 7 days\n        emptyScheduled: false // Add a flag to track if emptying has been scheduled\n    };\n\n    // Update bin state realistically\n    // Only increase fill level if bin isn't already at 100% and emptying isn't scheduled\n    if (binState.fillLevel < 100 && !binState.emptyScheduled) {\n        binState.fillLevel += binState.fillRate * (Math.random() * 0.5 + 0.75);\n        if (binState.fillLevel > 100) binState.fillLevel = 100;\n    } else if (binState.emptyScheduled) {\n        // If emptying is scheduled, simulate the bin being emptied\n        // 20% chance that the bin gets emptied if scheduled\n        if (Math.random() < 0.2) {\n            binState.fillLevel = Math.floor(Math.random() * 5); // Reset to almost empty (0-4%)\n            binState.lastEmptied = Date.now();\n            binState.emptyScheduled = false;\n        }\n    }\n    \n    // If bin is at 90%+ full, mark it for emptying if not already scheduled\n    if (binState.fillLevel >= 90 && !binState.emptyScheduled) {\n        binState.emptyScheduled = true;\n    }\n\n    binState.temperature += (Math.random() * 2 - 1); // fluctuate temperature +/-1 °C\n\n    const fillRatio = binState.fillLevel / 100;\n\n    binState.gasLevel = 100 + Math.floor(fillRatio * 400 + (Math.random() * 100 - 50));\n    binState.weight = 1 + Math.floor(fillRatio * 19 + (Math.random() * 3 - 1.5));\n    binState.humidity += (Math.random() * 4 - 2) + (fillRatio * 2);\n    binState.humidity = Math.max(20, Math.min(95, binState.humidity)); // constrain humidity\n\n    // Save updated bin state to flow context for persistence\n    flow.set(`bin_${i}`, binState);\n\n    // Build bin data object for output\n    bins.push({\n        binId: `bin_${i}`,\n        location: `Zone ${Math.ceil(i / 2)}`, // Just an example location naming\n        timestamp: new Date().toISOString(),\n        sensors: {\n            fill_level: { value: Math.round(binState.fillLevel), unit: \"%\" },\n            gas: { value: Math.round(binState.gasLevel), unit: \"ppm\" },\n            temperature: { value: Math.round(binState.temperature * 10) / 10, unit: \"°C\" },\n            humidity: { value: Math.round(binState.humidity), unit: \"%\" },\n            weight: { value: Math.round(binState.weight * 10) / 10, unit: \"kg\" }\n        },\n        lastEmptied: new Date(binState.lastEmptied).toISOString(),\n        emptyScheduled: binState.emptyScheduled\n    });\n}\n\n// Now, add status and alerts for each bin based on sensor values\nconst processedBins = bins.map(bin => {\n    const fillLevel = bin.sensors.fill_level.value;\n    const gasLevel = bin.sensors.gas.value;\n    const temperature = bin.sensors.temperature.value;\n\n    // FIXED: Determine bin status based on fill level with proper logic\n    let status = \"OK\";\n    if (fillLevel >= 80) status = \"NEEDS_EMPTYING\";\n    else if (fillLevel >= 70) status = \"WARNING\";\n\n    // Determine alerts based on sensor thresholds\n    let alerts = [];\n    if (fillLevel >= 80) {\n        alerts.push({ type: \"HIGH_FILL\", severity: \"HIGH\" });\n    } else if (fillLevel >= 70) {\n        alerts.push({ type: \"APPROACHING_FULL\", severity: \"MEDIUM\" });\n    }\n\n    if (gasLevel > 500) {\n        alerts.push({ type: \"GAS_LEVEL_HIGH\", severity: \"HIGH\" });\n    }\n\n    if (temperature > 30) {\n        alerts.push({ type: \"HIGH_TEMPERATURE\", severity: \"MEDIUM\" });\n    }\n\n    // Action recommendation based on fill level\n    const action = fillLevel >= 80 ? \"SCHEDULE_COLLECTION\" : \"MONITOR\";\n\n    return {\n        ...bin,\n        status: status,\n        alerts: alerts,\n        action: action\n    };\n});\n\n// Prepare final output message\nmsg.payload = {\n    bins: processedBins,\n    totalBins: numBins,\n    timestamp: new Date().toISOString()\n};\n\n// Add message start time and data size for metrics calculation\nmsg.startTime = Date.now();\nmsg.dataSize = JSON.stringify(msg.payload).length;\n\nreturn msg;\n",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 330,
+        "x": 320,
         "y": 80,
         "wires": [
             [
-                "e437e07f8cd777b2",
-                "1f58997871693c99"
+                "7ae6d9488268bea1",
+                "06018fb199c0c160"
             ]
         ]
     },
     {
-        "id": "e437e07f8cd777b2",
+        "id": "7ae6d9488268bea1",
         "type": "function",
-        "z": "8c61a2a284d5b095",
+        "z": "91ce89a582fe7d02",
         "name": "Edge Processing",
-        "func": "// Process data on the edge\nconst edgeStart = Date.now();\n\n// Process bin data and generate alerts/actions\nconst processedBins = msg.payload.bins.map(bin => {\n    const fillLevel = bin.sensors.fill_level.value;\n    const gasLevel = bin.sensors.gas.value;\n    const temperature = bin.sensors.temperature.value;\n    \n    // Add processing results\n    return {\n        ...bin,\n        status: fillLevel > 80 ? \"NEEDS_EMPTYING\" : \n               fillLevel > 70 ? \"WARNING\" : \"OK\",\n        alerts: [\n            ...(fillLevel > 80 ? [{type: \"HIGH_FILL\", severity: \"HIGH\"}] : []),\n            ...(fillLevel > 70 ? [{type: \"APPROACHING_FULL\", severity: \"MEDIUM\"}] : []),\n            ...(gasLevel > 500 ? [{type: \"GAS_LEVEL_HIGH\", severity: \"HIGH\"}] : []),\n            ...(temperature > 30 ? [{type: \"HIGH_TEMPERATURE\", severity: \"MEDIUM\"}] : [])\n        ],\n        action: fillLevel > 80 ? \"SCHEDULE_COLLECTION\" : \"MONITOR\"\n    };\n});\n\n// Create summary\nconst binsNeedingEmptying = processedBins.filter(bin => bin.status === \"NEEDS_EMPTYING\").length;\nconst binsWarning = processedBins.filter(bin => bin.status === \"WARNING\").length;\n\n// Calculate processing time\nconst edgeEnd = Date.now();\nconst edgeProcessingTime = edgeEnd - edgeStart;\n\n// Response time (edge is typically very fast)\nconst responseTime = edgeEnd - msg.startTime;\n\n// Energy usage simulation (edge uses less power)\nconst energyUsage = 0.05; // kWh for edge processing\nconst co2 = energyUsage * 0.5; // kg CO2 (approximation)\n\n// Data transfer (edge sends less data)\nconst dataSent = Math.floor(msg.dataSize * 0.3); // Only send necessary data\n\n// Calculate costs\nconst processingCost = energyUsage * 0.15; // $0.15 per kWh\nconst dataCost = dataSent * 0.000001; // $0.000001 per byte\nconst totalCost = processingCost + dataCost;\n\nmsg.payload = {\n    ...msg.payload,\n    processedBins: processedBins,\n    summary: {\n        binsNeedingEmptying: binsNeedingEmptying,\n        binsWarning: binsWarning,\n        binsOk: msg.payload.bins.length - binsNeedingEmptying - binsWarning\n    },\n    metrics: {\n        path: \"edge\",\n        responseTime: responseTime,\n        processingTime: edgeProcessingTime,\n        energyUsage: energyUsage,\n        co2: co2,\n        dataSize: msg.dataSize,\n        dataSent: dataSent,\n        cost: totalCost\n    }\n};\n\n// Update global metrics\nlet edgeMetrics = flow.get(\"edgeMetrics\") || {\n    count: 0,\n    totalResponseTime: 0,\n    totalEnergy: 0,\n    totalCO2: 0,\n    totalCost: 0,\n    totalDataSent: 0\n};\n\nedgeMetrics.count++;\nedgeMetrics.totalResponseTime += responseTime;\nedgeMetrics.totalEnergy += energyUsage;\nedgeMetrics.totalCO2 += co2;\nedgeMetrics.totalCost += totalCost;\nedgeMetrics.totalDataSent += dataSent;\n\nflow.set(\"edgeMetrics\", edgeMetrics);\n\nreturn msg;",
+        "func": "const edgeStart = Date.now();\n\nconst processedBins = msg.payload.bins.map(bin => {\n    const fillLevel = Number(bin.sensors.fill_level.value);\n    const gasLevel = Number(bin.sensors.gas.value);\n    const temperature = Number(bin.sensors.temperature.value);\n\n    // FIXED: Correct status logic using consistent values\n    const status = fillLevel >= 80 ? \"NEEDS_EMPTYING\" :\n        fillLevel >= 70 ? \"WARNING\" : \"OK\";\n\n    const alerts = [\n        ...(fillLevel >= 80 ? [{ type: \"HIGH_FILL\", severity: \"HIGH\" }] : []),\n        ...(fillLevel >= 70 && fillLevel < 80 ? [{ type: \"APPROACHING_FULL\", severity: \"MEDIUM\" }] : []),\n        ...(gasLevel > 500 ? [{ type: \"GAS_LEVEL_HIGH\", severity: \"HIGH\" }] : []),\n        ...(temperature > 30 ? [{ type: \"HIGH_TEMPERATURE\", severity: \"MEDIUM\" }] : [])\n    ];\n\n    const action = fillLevel >= 80 ? \"SCHEDULE_COLLECTION\" : \"MONITOR\";\n\n    node.warn(`Bin ID: ${bin.binId} | Fill Level: ${fillLevel} | Status: ${status}`);\n\n\n    return {\n        ...bin,\n        status,\n        alerts,\n        action\n    };\n});\n\nconst binsNeedingEmptying = processedBins.filter(bin => bin.status === \"NEEDS_EMPTYING\").length;\nconst binsWarning = processedBins.filter(bin => bin.status === \"WARNING\").length;\n\nconst edgeEnd = Date.now();\nconst edgeProcessingTime = edgeEnd - edgeStart;\nconst responseTime = edgeEnd - msg.startTime;\nconst energyUsage = 0.05; // kWh\nconst co2 = energyUsage * 0.5;\nconst dataSent = Math.floor(msg.dataSize * 0.3);\nconst processingCost = energyUsage * 0.15;\nconst dataCost = dataSent * 0.000001;\nconst totalCost = processingCost + dataCost;\n\nmsg.payload = {\n    ...msg.payload,\n    bins: processedBins,\n    summary: {\n        binsNeedingEmptying,\n        binsWarning,\n        binsOk: msg.payload.bins.length - binsNeedingEmptying - binsWarning\n    },\n    metrics: {\n        path: \"edge\",\n        responseTime,\n        processingTime: edgeProcessingTime,\n        energyUsage,\n        co2,\n        dataSize: msg.dataSize,\n        dataSent,\n        cost: totalCost\n    }\n};\n\nlet edgeMetrics = flow.get(\"edgeMetrics\") || {\n    count: 0,\n    totalResponseTime: 0,\n    totalEnergy: 0,\n    totalCO2: 0,\n    totalCost: 0,\n    totalDataSent: 0\n};\n\nedgeMetrics.count++;\nedgeMetrics.totalResponseTime += responseTime;\nedgeMetrics.totalEnergy += energyUsage;\nedgeMetrics.totalCO2 += co2;\nedgeMetrics.totalCost += totalCost;\nedgeMetrics.totalDataSent += dataSent;\n\nflow.set(\"edgeMetrics\", edgeMetrics);\n\nreturn msg;\n",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -72,16 +72,16 @@
         "y": 60,
         "wires": [
             [
-                "9b6f24760abc7c85",
-                "983bf41a42a04d2a",
-                "94a97052d87807c8"
+                "510a2905e82fb54e",
+                "579515e639bf1662",
+                "e666c89ee7c5b315"
             ]
         ]
     },
     {
-        "id": "1f58997871693c99",
+        "id": "06018fb199c0c160",
         "type": "delay",
-        "z": "8c61a2a284d5b095",
+        "z": "91ce89a582fe7d02",
         "name": "Simulate Network Latency",
         "pauseType": "delay",
         "timeout": "5",
@@ -99,14 +99,14 @@
         "y": 160,
         "wires": [
             [
-                "d11e7c703651b051"
+                "62fed480117e1ded"
             ]
         ]
     },
     {
-        "id": "d11e7c703651b051",
+        "id": "62fed480117e1ded",
         "type": "function",
-        "z": "8c61a2a284d5b095",
+        "z": "91ce89a582fe7d02",
         "name": "Network Transfer Costs",
         "func": "// Simulate network transfer costs and bandwidth usage\n\n// Mobile data is expensive\nconst dataSize = msg.dataSize;\nconst transferCost = dataSize * 0.000005; // $0.000005 per byte\n\n// Also simulate packet loss or corruption sometimes\nconst reliability = Math.random();\nif (reliability < 0.05) {\n    // 5% chance of data corruption or loss\n    msg.networkIssue = \"Data corruption detected\";\n    \n    // Simulate partial data corruption\n    if (Math.random() < 0.5) {\n        const binIndex = Math.floor(Math.random() * msg.payload.bins.length);\n        if (msg.payload.bins[binIndex]) {\n            // Corrupt a random sensor reading\n            const sensors = Object.keys(msg.payload.bins[binIndex].sensors);\n            const sensorToCorrupt = sensors[Math.floor(Math.random() * sensors.length)];\n            msg.payload.bins[binIndex].sensors[sensorToCorrupt].value = null;\n            msg.networkIssue += ` - Bin ${binIndex+1} sensor data corrupted`;\n        }\n    }\n}\n\n// Add network metrics to the message\nmsg.networkMetrics = {\n    transferSize: dataSize,\n    transferCost: transferCost,\n    reliability: reliability * 100 // percentage\n};\n\nreturn msg;",
         "outputs": 1,
@@ -119,16 +119,16 @@
         "y": 120,
         "wires": [
             [
-                "06d1ebd6d21c6978"
+                "c4ad43693ef209a4"
             ]
         ]
     },
     {
-        "id": "06d1ebd6d21c6978",
+        "id": "c4ad43693ef209a4",
         "type": "function",
-        "z": "8c61a2a284d5b095",
+        "z": "91ce89a582fe7d02",
         "name": "Cloud Processing",
-        "func": "// Process data in the cloud\nconst cloudStart = Date.now();\n\n// Process bin data (similar logic but we'll simulate more complex processing)\nconst processedBins = msg.payload.bins.map(bin => {\n    const fillLevel = bin.sensors.fill_level.value;\n    const gasLevel = bin.sensors.gas.value;\n    const temperature = bin.sensors.temperature.value;\n    \n    // Simulate more complex processing\n    let optimizedRoute = false;\n    let predictedFillDate = null;\n    \n    if (fillLevel > 50) {\n        // Calculate fill rate based on historical data\n        const currentDate = new Date();\n        const lastEmptied = new Date(bin.lastEmptied);\n        const daysSinceEmptied = (currentDate.getTime() - lastEmptied.getTime()) / (1000 * 60 * 60 * 24);\n        const estimatedFillRate = fillLevel / daysSinceEmptied; // % per day\n        \n        // Predict days until full\n        const daysUntilFull = (100 - fillLevel) / estimatedFillRate;\n        predictedFillDate = new Date();\n        predictedFillDate.setDate(predictedFillDate.getDate() + daysUntilFull);\n        \n        // Route optimization flag\n        optimizedRoute = fillLevel > 70;\n    }\n    \n    // Add processing results with more detail than edge processing\n    return {\n        ...bin,\n        status: fillLevel > 80 ? \"NEEDS_EMPTYING\" : \n               fillLevel > 70 ? \"WARNING\" : \"OK\",\n        alerts: [\n            ...(fillLevel > 80 ? [{type: \"HIGH_FILL\", severity: \"HIGH\"}] : []),\n            ...(fillLevel > 70 ? [{type: \"APPROACHING_FULL\", severity: \"MEDIUM\"}] : []),\n            ...(gasLevel > 500 ? [{type: \"GAS_LEVEL_HIGH\", severity: \"HIGH\"}] : []),\n            ...(temperature > 30 ? [{type: \"HIGH_TEMPERATURE\", severity: \"MEDIUM\"}] : [])\n        ],\n        analytics: {\n            predictedFillDate: predictedFillDate ? predictedFillDate.toISOString() : null,\n            optimizedRoute: optimizedRoute,\n            historical: {\n                avgFillRate: Math.random() * 5 + 5, // % per day (simulated)\n                collectionFrequency: Math.floor(Math.random() * 3) + 1 // times per week (simulated)\n            }\n        },\n        action: fillLevel > 80 ? \"SCHEDULE_COLLECTION\" : \"MONITOR\"\n    };\n});\n\n// Create summary\nconst binsNeedingEmptying = processedBins.filter(bin => bin.status === \"NEEDS_EMPTYING\").length;\nconst binsWarning = processedBins.filter(bin => bin.status === \"WARNING\").length;\n\n// Calculate processing metrics\nconst cloudEnd = Date.now();\nconst cloudProcessingTime = cloudEnd - cloudStart;\n\n// Response time (includes network delay)\nconst responseTime = cloudEnd - msg.startTime;\n\n// Energy usage simulation (cloud typically uses more power due to data center overhead)\nconst energyUsage = 0.2; // kWh for cloud processing\nconst co2 = energyUsage * 0.8; // kg CO2 (higher due to data center operations)\n\n// Calculate costs (cloud is typically more expensive)\nconst processingCost = energyUsage * 0.12; // $0.12 per kWh (cloud economies of scale)\nconst storageCost = msg.dataSize * 0.0000001 * 30; // $0.0000001 per byte per month\nconst networkCost = msg.networkMetrics ? msg.networkMetrics.transferCost : 0;\nconst totalCost = processingCost + storageCost + networkCost;\n\nmsg.payload = {\n    ...msg.payload,\n    processedBins: processedBins,\n    summary: {\n        binsNeedingEmptying: binsNeedingEmptying,\n        binsWarning: binsWarning,\n        binsOk: msg.payload.bins.length - binsNeedingEmptying - binsWarning\n    },\n    metrics: {\n        path: \"cloud\",\n        responseTime: responseTime,\n        processingTime: cloudProcessingTime,\n        energyUsage: energyUsage,\n        co2: co2,\n        dataSize: msg.dataSize,\n        networkIssue: msg.networkIssue || null,\n        cost: totalCost\n    }\n};\n\n// Update global metrics\nlet cloudMetrics = flow.get(\"cloudMetrics\") || {\n    count: 0,\n    totalResponseTime: 0,\n    totalEnergy: 0,\n    totalCO2: 0,\n    totalCost: 0\n};\n\ncloudMetrics.count++;\ncloudMetrics.totalResponseTime += responseTime;\ncloudMetrics.totalEnergy += energyUsage;\ncloudMetrics.totalCO2 += co2;\ncloudMetrics.totalCost += totalCost;\n\nflow.set(\"cloudMetrics\", cloudMetrics);\nreturn msg;",
+        "func": "// Process data in the cloud\nconst cloudStart = Date.now();\n\n// Process bin data (similar logic but we'll simulate more complex processing)\nconst processedBins = msg.payload.bins.map(bin => {\n    // Handle potential null values from network corruption\n    const fillLevel = bin.sensors.fill_level.value !== null ? Number(bin.sensors.fill_level.value) : 0;\n    const gasLevel = bin.sensors.gas.value !== null ? Number(bin.sensors.gas.value) : 0;\n    const temperature = bin.sensors.temperature.value !== null ? Number(bin.sensors.temperature.value) : 0;\n\n    // Simulate more complex processing\n    let optimizedRoute = false;\n    let predictedFillDate = null;\n\n    if (fillLevel > 50) {\n        // Calculate fill rate based on historical data\n        const currentDate = new Date();\n        const lastEmptied = new Date(bin.lastEmptied);\n        const daysSinceEmptied = (currentDate.getTime() - lastEmptied.getTime()) / (1000 * 60 * 60 * 24);\n        const estimatedFillRate = fillLevel / Math.max(daysSinceEmptied, 0.1); // % per day, prevent division by zero\n\n        // Predict days until full\n        const daysUntilFull = (100 - fillLevel) / Math.max(estimatedFillRate, 0.1); // Prevent division by zero\n        predictedFillDate = new Date();\n        predictedFillDate.setDate(predictedFillDate.getDate() + daysUntilFull);\n\n        // Route optimization flag\n        optimizedRoute = fillLevel > 70;\n    }\n\n    // FIXED: Correct status logic using consistent values\n    const status = fillLevel >= 80 ? \"NEEDS_EMPTYING\" :\n                 fillLevel >= 70 ? \"WARNING\" : \"OK\";\n    \n    // Add processing results with more detail than edge processing\n    return {\n        ...bin,\n        status: status,\n        alerts: [\n            ...(fillLevel >= 80 ? [{ type: \"HIGH_FILL\", severity: \"HIGH\" }] : []),\n            ...(fillLevel >= 70 && fillLevel < 80 ? [{ type: \"APPROACHING_FULL\", severity: \"MEDIUM\" }] : []),\n            ...(gasLevel > 500 ? [{ type: \"GAS_LEVEL_HIGH\", severity: \"HIGH\" }] : []),\n            ...(temperature > 30 ? [{ type: \"HIGH_TEMPERATURE\", severity: \"MEDIUM\" }] : [])\n        ],\n        analytics: {\n            predictedFillDate: predictedFillDate ? predictedFillDate.toISOString() : null,\n            optimizedRoute: optimizedRoute,\n            historical: {\n                avgFillRate: Math.random() * 5 + 5, // % per day (simulated)\n                collectionFrequency: Math.floor(Math.random() * 3) + 1 // times per week (simulated)\n            }\n        },\n        action: fillLevel >= 80 ? \"SCHEDULE_COLLECTION\" : \"MONITOR\"\n    };\n});\n\n// Create summary\nconst binsNeedingEmptying = processedBins.filter(bin => bin.status === \"NEEDS_EMPTYING\").length;\nconst binsWarning = processedBins.filter(bin => bin.status === \"WARNING\").length;\n\n// Calculate processing metrics\nconst cloudEnd = Date.now();\nconst cloudProcessingTime = cloudEnd - cloudStart;\n\n// Response time (includes network delay)\nconst responseTime = cloudEnd - msg.startTime;\n\n// Energy usage simulation (cloud typically uses more power due to data center overhead)\nconst energyUsage = 0.2; // kWh for cloud processing\nconst co2 = energyUsage * 0.8; // kg CO2 (higher due to data center operations)\n\n// Calculate costs (cloud is typically more expensive)\nconst processingCost = energyUsage * 0.12; // $0.12 per kWh (cloud economies of scale)\nconst storageCost = msg.dataSize * 0.0000001 * 30; // $0.0000001 per byte per month\nconst networkCost = msg.networkMetrics ? msg.networkMetrics.transferCost : 0;\nconst totalCost = processingCost + storageCost + networkCost;\n\nmsg.payload = {\n    ...msg.payload,\n    bins: processedBins, // FIXED: Use the same key name as edge processing\n    summary: {\n        binsNeedingEmptying: binsNeedingEmptying,\n        binsWarning: binsWarning,\n        binsOk: msg.payload.bins.length - binsNeedingEmptying - binsWarning\n    },\n    metrics: {\n        path: \"cloud\",\n        responseTime: responseTime,\n        processingTime: cloudProcessingTime,\n        energyUsage: energyUsage,\n        co2: co2,\n        dataSize: msg.dataSize,\n        networkIssue: msg.networkIssue || null,\n        cost: totalCost\n    }\n};\n\n// Update global metrics\nlet cloudMetrics = flow.get(\"cloudMetrics\") || {\n    count: 0,\n    totalResponseTime: 0,\n    totalEnergy: 0,\n    totalCO2: 0,\n    totalCost: 0\n};\n\ncloudMetrics.count++;\ncloudMetrics.totalResponseTime += responseTime;\ncloudMetrics.totalEnergy += energyUsage;\ncloudMetrics.totalCO2 += co2;\ncloudMetrics.totalCost += totalCost;\n\nflow.set(\"cloudMetrics\", cloudMetrics);\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -139,18 +139,18 @@
         "y": 160,
         "wires": [
             [
-                "9b6f24760abc7c85",
-                "983bf41a42a04d2a",
-                "94a97052d87807c8"
+                "510a2905e82fb54e",
+                "579515e639bf1662",
+                "e666c89ee7c5b315"
             ]
         ]
     },
     {
-        "id": "9b6f24760abc7c85",
+        "id": "510a2905e82fb54e",
         "type": "debug",
-        "z": "8c61a2a284d5b095",
+        "z": "91ce89a582fe7d02",
         "name": "Process Output",
-        "active": true,
+        "active": false,
         "tosidebar": true,
         "console": false,
         "tostatus": false,
@@ -163,11 +163,11 @@
         "wires": []
     },
     {
-        "id": "983bf41a42a04d2a",
+        "id": "579515e639bf1662",
         "type": "function",
-        "z": "8c61a2a284d5b095",
+        "z": "91ce89a582fe7d02",
         "name": "Update Comparison Metrics",
-        "func": "// Get stored metrics\nlet edgeMetrics = flow.get(\"edgeMetrics\") || {\n    count: 0,\n    totalResponseTime: 0,\n    totalEnergy: 0,\n    totalCO2: 0,\n    totalCost: 0,\n    totalDataSent: 0\n};\n\nlet cloudMetrics = flow.get(\"cloudMetrics\") || {\n    count: 0,\n    totalResponseTime: 0,\n    totalEnergy: 0,\n    totalCO2: 0,\n    totalCost: 0\n};\n\n// Skip if we don't have data for both yet\nif (edgeMetrics.count === 0 || cloudMetrics.count === 0) {\n    return null;\n}\n\n// Calculate averages\nconst comparison = {\n    responseTime: {\n        edge: edgeMetrics.totalResponseTime / edgeMetrics.count,\n        cloud: cloudMetrics.totalResponseTime / cloudMetrics.count,\n        improvement: ((cloudMetrics.totalResponseTime / cloudMetrics.count) / \n                    (edgeMetrics.totalResponseTime / edgeMetrics.count) - 1) * 100\n    },\n    energy: {\n        edge: edgeMetrics.totalEnergy / edgeMetrics.count,\n        cloud: cloudMetrics.totalEnergy / cloudMetrics.count,\n        savings: ((cloudMetrics.totalEnergy - edgeMetrics.totalEnergy) / \n                 cloudMetrics.totalEnergy) * 100\n    },\n    co2: {\n        edge: edgeMetrics.totalCO2 / edgeMetrics.count,\n        cloud: cloudMetrics.totalCO2 / cloudMetrics.count,\n        reduction: ((cloudMetrics.totalCO2 - edgeMetrics.totalCO2) / \n                   cloudMetrics.totalCO2) * 100\n    },\n    cost: {\n        edge: edgeMetrics.totalCost / edgeMetrics.count,\n        cloud: cloudMetrics.totalCost / cloudMetrics.count,\n        savings: ((cloudMetrics.totalCost - edgeMetrics.totalCost) / \n                 cloudMetrics.totalCost) * 100\n    },\n    totalSamples: Math.min(edgeMetrics.count, cloudMetrics.count)\n};\n\n// Only show significant figures\nconst formatNumber = (num) => {\n    if (typeof num !== 'number') return 'N/A';\n    if (Math.abs(num) < 0.01) return num.toExponential(2);\n    return Math.round(num * 100) / 100;\n};\n\nfor (const category in comparison) {\n    if (typeof comparison[category] === 'object') {\n        for (const key in comparison[category]) {\n            if (typeof comparison[category][key] === 'number') {\n                comparison[category][key] = formatNumber(comparison[category][key]);\n            }\n        }\n    }\n}\n\n// Store the comparison\nflow.set(\"comparisonMetrics\", comparison);\n// Create a message with the comparison\nmsg.payload = {\n    timestamp: new Date().toISOString(),\n    title: \"Edge vs Cloud Processing Comparison\",\n    metrics: comparison,\n    sustainabilityImpact: {\n        co2Reduction: comparison.co2.reduction + \"% CO2 reduction with edge processing\",\n        energySavings: comparison.energy.savings + \"% energy savings with edge processing\",\n        costSavings: comparison.cost.savings + \"% cost savings with edge processing\",\n        responseTimeImprovement: comparison.responseTime.improvement + \"% faster response with edge processing\"\n    },\n    hypothesis: \"Edge processing reduces delays, operational costs, and improves sustainability compared to cloud-only processing in waste management systems.\",\n    conclusion: comparison.responseTime.improvement > 0 &&\n        comparison.cost.savings > 0 &&\n        comparison.co2.reduction > 0 ?\n        \"The data supports the hypothesis.\" :\n        \"The hypothesis is not fully supported by the current data.\"\n};\n\n\n\nreturn msg;",
+        "func": "// Get stored metrics\nlet edgeMetrics = flow.get(\"edgeMetrics\") || {\n    count: 0,\n    totalResponseTime: 0,\n    totalEnergy: 0,\n    totalCO2: 0,\n    totalCost: 0,\n    totalDataSent: 0\n};\n\nlet cloudMetrics = flow.get(\"cloudMetrics\") || {\n    count: 0,\n    totalResponseTime: 0,\n    totalEnergy: 0,\n    totalCO2: 0,\n    totalCost: 0\n};\n\n// Skip if we don't have data for both yet\nif (edgeMetrics.count === 0 || cloudMetrics.count === 0) {\n    return null;\n}\n\n\n// Calculate averages\nconst comparison = {\n    responseTime: {\n        edge: edgeMetrics.totalResponseTime / edgeMetrics.count,\n        cloud: cloudMetrics.totalResponseTime / cloudMetrics.count,\n        improvement: ((cloudMetrics.totalResponseTime / cloudMetrics.count) - \n                  (edgeMetrics.totalResponseTime / edgeMetrics.count)) / \n                  (cloudMetrics.totalResponseTime / cloudMetrics.count) * 100\n    },\n    energy: {\n        edge: edgeMetrics.totalEnergy / edgeMetrics.count,\n        cloud: cloudMetrics.totalEnergy / cloudMetrics.count,\n        savings: ((cloudMetrics.totalEnergy - edgeMetrics.totalEnergy) / \n                 cloudMetrics.totalEnergy) * 100\n    },\n    co2: {\n        edge: edgeMetrics.totalCO2 / edgeMetrics.count,\n        cloud: cloudMetrics.totalCO2 / cloudMetrics.count,\n        reduction: ((cloudMetrics.totalCO2 - edgeMetrics.totalCO2) / \n                   cloudMetrics.totalCO2) * 100\n    },\n    cost: {\n        edge: edgeMetrics.totalCost / edgeMetrics.count,\n        cloud: cloudMetrics.totalCost / cloudMetrics.count,\n        savings: ((cloudMetrics.totalCost / cloudMetrics.count - edgeMetrics.totalCost / edgeMetrics.count) /\n            (cloudMetrics.totalCost / cloudMetrics.count)) * 100\n    },\n    totalSamples: Math.min(edgeMetrics.count, cloudMetrics.count)\n};\n\n// Only show significant figures\nconst formatNumber = (num, isCurrency = false) => {\n    if (typeof num !== 'number') return 'N/A';\n    if (isCurrency) {\n        return `${(Math.round(num * 10000) / 10000).toFixed(4)}`; // show as $0.XXXX\n    }\n    if (Math.abs(num) < 0.01) return num.toExponential(2);\n    return Math.round(num * 100) / 100;\n};\n\n// First format cost fields as currency\ncomparison.cost.edge = formatNumber(comparison.cost.edge, true);\ncomparison.cost.cloud = formatNumber(comparison.cost.cloud, true);\n\n// Then format all other numeric fields (skip already-formatted cost.edge/cloud)\nfor (const category in comparison) {\n    if (typeof comparison[category] === 'object') {\n        for (const key in comparison[category]) {\n            const value = comparison[category][key];\n            if (typeof value === 'number') {\n                // Skip edge and cloud under cost to avoid double-formatting\n                if (category === 'cost' && (key === 'edge' || key === 'cloud')) continue;\n                comparison[category][key] = formatNumber(value);\n            }\n        }\n    }\n}\n\n// Store the comparison\nflow.set(\"comparisonMetrics\", comparison);\n// Create a message with the comparison\nmsg.payload = {\n    timestamp: new Date().toISOString(),\n    title: \"Edge vs Cloud Processing Comparison\",\n    metrics: comparison,\n    sustainabilityImpact: {\n        co2Reduction: comparison.co2.reduction + \"% CO2 reduction with edge processing\",\n        energySavings: comparison.energy.savings + \"% energy savings with edge processing\",\n        costSavings: comparison.cost.savings + \"% cost savings with edge processing\",\n        responseTimeImprovement: comparison.responseTime.improvement + \"% faster response with edge processing\"\n    },\n    hypothesis: \"Edge processing reduces delays, operational costs, and improves sustainability compared to cloud-only processing in waste management systems.\",\n    conclusion: comparison.responseTime.improvement > 0 &&\n        comparison.cost.savings > 0 &&\n        comparison.co2.reduction > 0 ?\n        \"The data supports the hypothesis.\" :\n        \"The hypothesis is not fully supported by the current data.\"\n};\n\n\n\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -178,17 +178,17 @@
         "y": 200,
         "wires": [
             [
-                "f110328f2170b30b",
-                "94a97052d87807c8"
+                "08e5d3953bc6056b",
+                "e666c89ee7c5b315"
             ]
         ]
     },
     {
-        "id": "f110328f2170b30b",
+        "id": "08e5d3953bc6056b",
         "type": "debug",
-        "z": "8c61a2a284d5b095",
+        "z": "91ce89a582fe7d02",
         "name": "Comparison Results",
-        "active": true,
+        "active": false,
         "tosidebar": true,
         "console": false,
         "tostatus": false,
@@ -201,9 +201,20 @@
         "wires": []
     },
     {
-        "id": "ab39a65a49a6a084",
+        "id": "e666c89ee7c5b315",
+        "type": "websocket out",
+        "z": "91ce89a582fe7d02",
+        "name": "",
+        "server": "2edd959c62d7a2d2",
+        "client": "",
+        "x": 1460,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "fe7384a887838aec",
         "type": "ui_button",
-        "z": "8c61a2a284d5b095",
+        "z": "91ce89a582fe7d02",
         "name": "Reset Metrics",
         "group": "1d91ac8baa039d98",
         "order": 1,
@@ -224,14 +235,14 @@
         "y": 240,
         "wires": [
             [
-                "fc67d749d920129e"
+                "08c08a5784d85d4f"
             ]
         ]
     },
     {
-        "id": "fc67d749d920129e",
+        "id": "08c08a5784d85d4f",
         "type": "function",
-        "z": "8c61a2a284d5b095",
+        "z": "91ce89a582fe7d02",
         "name": "Reset All Metrics",
         "func": "// Reset all metrics in flow context\nflow.set(\"edgeMetrics\", null);\nflow.set(\"cloudMetrics\", null);\nflow.set(\"comparisonMetrics\", null);\n\n// Reset bin states\nfor (let i = 1; i <= 10; i++) {\n    flow.set(`bin_${i}`, null);\n}\n\nreturn { payload: \"Metrics and bin states reset\" };",
         "outputs": 1,
@@ -244,20 +255,15 @@
         "y": 240,
         "wires": [
             [
-                "9b6f24760abc7c85"
+                "510a2905e82fb54e"
             ]
         ]
     },
     {
-        "id": "94a97052d87807c8",
-        "type": "websocket out",
-        "z": "8c61a2a284d5b095",
-        "name": "",
-        "server": "2edd959c62d7a2d2",
-        "client": "",
-        "x": 1460,
-        "y": 80,
-        "wires": []
+        "id": "2edd959c62d7a2d2",
+        "type": "websocket-listener",
+        "path": "/smart-bins",
+        "wholemsg": "false"
     },
     {
         "id": "1d91ac8baa039d98",
@@ -269,12 +275,6 @@
         "width": "6",
         "collapse": false,
         "className": ""
-    },
-    {
-        "id": "2edd959c62d7a2d2",
-        "type": "websocket-listener",
-        "path": "/smart-bins",
-        "wholemsg": "false"
     },
     {
         "id": "241c2e838d16e1b2",
