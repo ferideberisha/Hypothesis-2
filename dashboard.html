@@ -300,7 +300,7 @@
     // Connect to WebSocket server
     function connectWebSocket() {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}`;
+      const wsUrl = `${protocol}//localhost:1880/smart-bins`;
       
       socket = new WebSocket(wsUrl);
       
