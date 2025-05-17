@@ -103,6 +103,7 @@ function connectToNodeRed() {
   });
 
   nodeRedWs.on("message", (data) => {
+    console.log("Received from Node-RED:", data); // 👈 Add this
     try {
       const parsedData = JSON.parse(data);
 
