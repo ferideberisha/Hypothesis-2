@@ -171,11 +171,6 @@ function loadInitialData() {
       });
   }
 }
-// Example of WebSocket connection troubleshooting in browser console
-const socket = new WebSocket("ws://127.0.0.1:1880/smart-bins");
-socket.onopen = () => console.log("Connected!");
-socket.onmessage = (event) => console.log("Received:", event.data);
-socket.onerror = (error) => console.error("Error:", error);
 
 // Start the server
 server.listen(PORT, () => {
