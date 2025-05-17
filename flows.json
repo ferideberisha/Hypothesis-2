@@ -27,7 +27,7 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 130,
+        "x": 90,
         "y": 80,
         "wires": [
             [
@@ -68,7 +68,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 580,
+        "x": 570,
         "y": 60,
         "wires": [
             [
@@ -115,8 +115,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 630,
-        "y": 160,
+        "x": 610,
+        "y": 120,
         "wires": [
             [
                 "06d1ebd6d21c6978"
