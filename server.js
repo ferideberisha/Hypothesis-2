@@ -6,7 +6,7 @@ const csv = require("csv-parser");
 
 // Configuration
 const PORT = 3000;
-const NODERED_WS_URL = "ws://localhost:1880/h#flow/a51a6878bee89808/smart-bins";
+const NODERED_WS_URL = "ws://localhost:1880/smart-bins";
 const CSV_PATH = "./smart_bin_metrics.csv";
 
 // Data store
